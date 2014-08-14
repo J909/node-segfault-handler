@@ -35,7 +35,7 @@ static void segfault_handler(int sig, siginfo_t *si, void *unused) {
   // Open the File
   fd = open(sbuff, O_CREAT | O_APPEND | O_WRONLY, S_IRUSR | S_IRGRP | S_IROTH);
   // Write the header line
-  n = snprintf(sbuff, sizeof(sbuff), "PID %d received SIGSEGV for address: 0x%lx\n", pid, (long) si->si_addr);
+  n = snprintf(sbuff, sizeof(sbuff), "PID %d received SIGABRT for address: 0x%lx\n", pid, (long) si->si_addr);
   if(fd > 0) write(fd, sbuff, n);
   write(STDERR_FD, sbuff, n);
 
@@ -72,10 +72,9 @@ void segfault_stack_frame_2(void) {
   fn_ptr();
 }
 
-Handle<Value> CauseSegfault(const Arguments& args) {
+Handle<Value> CauseSigabrt(const Arguments& args) {
   // use a function pointer to thwart inlining
-  void (*fn_ptr)() = segfault_stack_frame_2;
-  fn_ptr();
+  abort();
   return Undefined();  // this line never runs
 }
 
@@ -85,14 +84,14 @@ Handle<Value> RegisterHandler(const Arguments& args) {
   sigemptyset(&sa.sa_mask);
   sa.sa_sigaction = segfault_handler;
   sa.sa_flags   = SA_SIGINFO;
-  sigaction(SIGSEGV, &sa, NULL);
+  sigaction(SIGABRT, &sa, NULL);
   return Undefined();
 }
 
 extern "C" {
   void init(Handle<Object> target) {
     NODE_SET_METHOD(target, "registerHandler", RegisterHandler);
-    NODE_SET_METHOD(target, "causeSegfault", CauseSegfault);
+    NODE_SET_METHOD(target, "causeSigabrt", CauseSigabrt);
   }
   NODE_MODULE(segfault_handler, init);
 }
